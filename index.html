@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connected Trees</title>
+
+  <!-- Cytoscape.js creates the interactive graph -->
+  <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      color: #1f2937;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      background: #f4f6f8;
+    }
+
+    #graph {
+      height: 100vh;
+      background: #ffffff;
+      border-right: 1px solid #d1d5db;
+    }
+
+    #details {
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    #details h1 {
+      margin-top: 0;
+      font-size: 22px;
+    }
+
+    #details h2 {
+      font-size: 19px;
+      margin-top: 28px;
+    }
+
+    .hint {
+      color: #4b5563;
+      line-height: 1.5;
+    }
+
+    .node-type {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 4px 9px;
+      border-radius: 20px;
+      background: #e5e7eb;
+      font-size: 13px;
+    }
+
+    @media (max-width: 800px) {
+      body {
+        display: block;
+      }
+
+      #graph {
+        height: 65vh;
+        border-right: 0;
+        border-bottom: 1px solid #d1d5db;
+      }
+
+      #details {
+        min-height: 35vh;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main id="graph"></main>
+
+  <aside id="details">
+    <h1>Connected Trees</h1>
+    <p class="hint">
+      Click a node to view its description.
+      Use the mouse wheel to zoom and drag the background to move around.
+    </p>
+  </aside>
+
+  <script>
+    fetch("./data.json")
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Could not load data.json");
+        }
+        return response.json();
+      })
+      .then(data => {
+        const elements = [];
+
+        // Add nodes
+        data.nodes.forEach(node => {
+          elements.push({
+            data: {
+              id: node.id,
+              label: node.label,
+              description: node.description,
+              type: node.type || "node"
+            },
+            classes: node.type || "node"
+          });
+        });
+
+        // Add parent-child tree links
+        data.nodes
+          .filter(node => node.parent)
+          .forEach(node => {
+            elements.push({
+              data: {
+                id: `tree-${node.parent}-${node.id}`,
+                source: node.parent,
+                target: node.id,
+                label: ""
+              },
+              classes: "tree-link"
+            });
+          });
+
+        // Add links between trees
+        data.connections.forEach((connection, index) => {
+          elements.push({
+            data: {
+              id: `connection-${index}`,
+              source: connection.source,
+              target: connection.target,
+              label: connection.label || "related to"
+            },
+            classes: "connection-link"
+          });
+        });
+
+        const cy = cytoscape({
+          container: document.getElementById("graph"),
+          elements: elements,
+
+          style: [
+            {
+              selector: "node",
+              style: {
+                "shape": "round-rectangle",
+                "width": 150,
+                "height": 52,
+                "background-color": "#0072ce",
+                "label": "data(label)",
+                "color": "#ffffff",
+                "font-size": 12,
+                "text-wrap": "wrap",
+                "text-max-width": 130,
+                "text-valign": "center",
+                "text-halign": "center",
+                "border-width": 1,
+                "border-color": "#005a9c"
+              }
+            },
+            {
+              selector: "node[type = 'root']",
+              style: {
+                "background-color": "#17365d",
+                "border-color": "#102946",
+                "font-weight": "bold"
+              }
+            },
+            {
+              selector: "node[type = 'department']",
+              style: {
+                "background-color": "#008b8b",
+                "border-color": "#006d6d"
+              }
+            },
+            {
+              selector: "node[type = 'system']",
+              style: {
+                "background-color": "#6b4fa1",
+                "border-color": "#513b7b"
+              }
+            },
+            {
+              selector: ".tree-link",
+              style: {
+                "width": 2,
+                "line-color": "#9ca3af",
+                "target-arrow-color": "#9ca3af",
+                "target-arrow-shape": "triangle",
+                "curve-style": "bezier"
+              }
+            },
+            {
+              selector: ".connection-link",
+              style: {
+                "width": 3,
+                "line-color": "#ef7c00",
+                "line-style": "dashed",
+                "target-arrow-color": "#ef7c00",
+                "target-arrow-shape": "triangle",
+                "curve-style": "bezier",
+                "label": "data(label)",
+                "font-size": 10,
+                "color": "#8a4800",
+                "text-background-color": "#ffffff",
+                "text-background-opacity": 1,
+                "text-background-padding": 3
+              }
+            },
+            {
+              selector: ":selected",
+              style: {
+                "border-width": 4,
+                "border-color": "#111827"
+              }
+            }
+          ],
+
+          layout: {
+            name: "breadthfirst",
+            directed: true,
+            spacingFactor: 1.35,
+            padding: 50
+          }
+        });
+
+        // Show node details after selecting a node
+        cy.on("tap", "node", event => {
+          const node = event.target;
+
+          document.getElementById("details").innerHTML = `
+            <h1>${node.data("label")}</h1>
+            <p>${node.data("description") || "No description has been added."}</p>
+            <span class="node-type">Type: ${node.data("type")}</span>
+          `;
+        });
+
+        // Clicking empty space removes the selection
+        cy.on("tap", event => {
+          if (event.target === cy) {
+            cy.elements().unselect();
+          }
+        });
+      })
+      .catch(error => {
+        document.getElementById("details").innerHTML = `
+          <h1>Unable to load the data</h1>
+          <p>${error.message}</p>
+          <p>Check that <code>data.json</code> exists in the same folder as <code>index.html</code>.</p>
+        `;
+      });
+  </script>
+</body>
+</html>

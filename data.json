@@ -1,0 +1,56 @@
+{
+  "nodes": [
+    {
+      "id": "organisation",
+      "label": "Organisation",
+      "description": "The organisational tree.",
+      "type": "root"
+    },
+    {
+      "id": "engineering",
+      "label": "Engineering",
+      "description": "The engineering team is responsible for technical delivery.",
+      "parent": "organisation",
+      "type": "department"
+    },
+    {
+      "id": "planning",
+      "label": "Planning",
+      "description": "The planning team coordinates schedules and capacity.",
+      "parent": "organisation",
+      "type": "department"
+    },
+    {
+      "id": "systems",
+      "label": "Systems",
+      "description": "The systems landscape tree.",
+      "type": "root"
+    },
+    {
+      "id": "asset-system",
+      "label": "Asset System",
+      "description": "Used to manage asset information.",
+      "parent": "systems",
+      "type": "system"
+    },
+    {
+      "id": "project-system",
+      "label": "Project System",
+      "description": "Used for project planning and reporting.",
+      "parent": "systems",
+      "type": "system"
+    }
+  ],
+  "connections": [
+    {
+      "source": "engineering",
+      "target": "asset-system",
+      "label": "owns"
+    },
+    {
+      "source": "planning",
+      "target": "project-system",
+      "label": "uses"
+    }
+  ]
+}
